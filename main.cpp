@@ -42,8 +42,66 @@ float prevy = 300.0f;
 GLuint debugVAO;
 GLuint debugVBO;
 
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
 
+void RRenderTextt(
+	GLuint fontTexture,
+	stbtt_bakedchar* cdata,
+	GLuint textVAO,
+	GLuint textVBO,
+	std::string text,
+	float x,
+	float y
+)
+{
+	glBindVertexArray(textVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+	glBindTexture(GL_TEXTURE_2D, fontTexture);
 
+	glBindVertexArray(textVAO);
+
+	for (char c : text)
+	{
+		if (c < 32 || c >= 128)
+			continue;
+
+		stbtt_aligned_quad q;
+
+		stbtt_GetBakedQuad(
+			cdata,
+			512,
+			512,
+			c - 32,
+			&x,
+			&y,
+			&q,
+			1
+		);
+
+		float vertices[] =
+		{
+			q.x0, q.y0, q.s0, q.t0,
+			q.x1, q.y0, q.s1, q.t0,
+			q.x1, q.y1, q.s1, q.t1,
+
+			q.x0, q.y0, q.s0, q.t0,
+			q.x1, q.y1, q.s1, q.t1,
+			q.x0, q.y1, q.s0, q.t1
+		};
+
+		glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+
+		glBufferSubData(
+			GL_ARRAY_BUFFER,
+			0,
+			sizeof(vertices),
+			vertices
+		);
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+	}
+}
 
 
 void handle_shooting(bool shoot, std::vector<Renderable> *renderables, glm::vec3 forward, ExplosionSystem *particleSystem)
@@ -102,48 +160,7 @@ void handle_shooting(bool shoot, std::vector<Renderable> *renderables, glm::vec3
 }
 
 
-void draw_direction_line(glm::vec3 position, float yaw, float pitch) {
-	/*
-	Draws the line of the
-	For debugging/visualisation purposes
-	*/
-	glm::vec3 forward;
 
-	forward.x =
-		cos(glm::radians(yaw)) *
-		cos(glm::radians(pitch));
-
-	forward.y =
-		sin(glm::radians(pitch));
-
-	forward.z =
-		sin(glm::radians(yaw)) *
-		cos(glm::radians(pitch));
-
-	forward = glm::normalize(forward);
-
-	glm::vec3 start =
-		position;
-
-	glm::vec3 end =
-		start + forward * 5.0f;
-
-	float lineVertices[] =
-	{
-		start.x, start.y, start.z,
-		end.x, end.y, end.z
-	};
-	glBindBuffer(GL_ARRAY_BUFFER, debugVBO);
-
-	glBufferData(
-		GL_ARRAY_BUFFER,
-		sizeof(lineVertices),
-		lineVertices,
-		GL_DYNAMIC_DRAW
-	);
-
-	glDrawArrays(GL_LINES, 0, 2);
-}
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
@@ -166,7 +183,6 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 
 
 void loadCubemapFace(const char* file, const GLenum& targetCube);
-
 
 
 
@@ -221,24 +237,33 @@ int main(int argc, char* argv[])
 	
 	renderagbleMgr.add_object("scene.obj", glm::vec3(-0.0, 0.0, -00.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.7, 0.7, 0.7)); //celuia la pompe!!!
 	
-	//renderagbleMgr.add_object("retro building.obj", glm::vec3(-4.0, 0.0, -10.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(1.5, 1.5, 1.5));
+	//renderagbleMgr.add_object("retro building.obj", glm::vec3(-4.0, -01.0, -10.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(1.5, 1.5, 1.5));
 	renderagbleMgr.add_object("FINAL_MODEL_ASTERION.obj", glm::vec3(-1.5,0.0, 17.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(1.2, 1.2, 1.2)); 
-	renderagbleMgr.add_object("rocket.obj", glm::vec3(-14.0, 1.0, 17.0), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(0.2, 0.2, 0.2));
+	renderagbleMgr.add_object("rocket.obj", glm::vec3(24.0, 2.0, 17.0), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(0.2, 0.2, 0.2));
+	renderagbleMgr.add_object("rocket_launcher.obj", glm::vec3(24.0, 2.0, 17.0), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(0.2, 0.2, 0.2));
+	renderagbleMgr.add_object("sphere.obj", glm::vec3(45, 5.0, 14), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(3.0, 3.0, 3.0));
+	Shader depthShader(depthVS, depthFS);
 	//renderagbleMgr.add_object("pool.obj", glm::vec3(-4.0, 0.0, -10.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.4, 0.4, 0.4));
 	//renderagbleMgr.add_object("Untitled.obj", glm::vec3(-4.0, 0.0, -10.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.4, 0.4, 0.4));
-	renderagbleMgr.add_object("rocket_launcher.obj", glm::vec3(-14.0, 1.0, 17.0), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(0.2, 0.2, 0.2));
+	
 	//renderagbleMgr.add_object("Street_Lamp_7.obj", glm::vec3(-0.0, 0.0, 0), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(4.0, 4.0, 4.0));
 	renderagbleMgr.add_lamp("Street_Lamp_7.obj", glm::vec3(-17.5, 0.0, 12.5), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(4.0, 4.0, 4.0) , glm::vec3(0.0, 8.4, 0.0));
 	renderagbleMgr.add_lamp("Street_Lamp_7.obj", glm::vec3(-17.5, 0.0, 23), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(4.0, 4.0, 4.0), glm::vec3(0.0, 8.4, 0.0));
 
 	renderagbleMgr.add_lamp("Street_Lamp_7.obj", glm::vec3(17.5, 0.0, 12.5), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(4.0, 4.0, 4.0), glm::vec3(0.0, 8.4, 0.0));
 	renderagbleMgr.add_lamp("Street_Lamp_7.obj", glm::vec3(17.5, 0.0, 23), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(4.0, 4.0, 4.0), glm::vec3(0.0, 8.4, 0.0));
-	renderagbleMgr.add_lamp("Street_Lamp_7.obj", glm::vec3(-4.2, 0.0, -15), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(4.0, 4.0, 4.0), glm::vec3(0.0, 8.4, 0.0));
-	Shader depthShader(depthVS, depthFS);
+
+	//renderagbleMgr.add_lamp("cube_textured.obj", glm::vec3(14.5, 0.5, 14), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(2.0, 2.0, 2.0), glm::vec3(0.0, 8.4, 0.0));
+	//renderagbleMgr.add_lamp("cube_textured.obj", glm::vec3(14.5, 4.5, 10), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(2.0, 2.0, 2.0), glm::vec3(0.0, 8.4, 0.0));
+	//renderagbleMgr.add_lamp("Street_Lamp_7.obj", glm::vec3(-8.2, 0.0, 1), glm::vec3(0, 3.14 / 2, 0.0), glm::vec3(4.0, 4.0, 4.0), glm::vec3(0.0, 8.4, 0.0));
+
+
+	
 	ShadowMap shadowMap;
 	shadowMap.Init();
 
-
+	renderagbleMgr.renderables[1].reflectivity = 0.0f;
+	renderagbleMgr.renderables[4].reflectivity = 0.95f;
 	ExplosionSystem particleSystem;
 	particleSystem.Init();
 	double prev = 0;
@@ -281,17 +306,20 @@ int main(int argc, char* argv[])
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	//stbi_set_flip_vertically_on_load(true);
+	stbi_set_flip_vertically_on_load(false);
 
-	//std::string pathToCubeMap = "cubemaps/purple_sky/";
 	std::string pathToCubeMap = "cubemaps/map/";
-	std::map<std::string, GLenum> facesToLoad = {
-		{pathToCubeMap + "posx.png",GL_TEXTURE_CUBE_MAP_POSITIVE_X},
-		{pathToCubeMap + "posy.png",GL_TEXTURE_CUBE_MAP_POSITIVE_Y},
-		{pathToCubeMap + "posz.png",GL_TEXTURE_CUBE_MAP_POSITIVE_Z},
-		{pathToCubeMap + "negx.png",GL_TEXTURE_CUBE_MAP_NEGATIVE_X},
-		{pathToCubeMap + "negy.png",GL_TEXTURE_CUBE_MAP_NEGATIVE_Y},
-		{pathToCubeMap + "negz.png",GL_TEXTURE_CUBE_MAP_NEGATIVE_Z},
+	//std::string pathToCubeMap = "cubemaps/map/";
+	std::vector<std::pair<std::string, GLenum>> facesToLoad =
+	{
+		{pathToCubeMap + "posz.png", GL_TEXTURE_CUBE_MAP_POSITIVE_X},
+		{pathToCubeMap + "negz.png", GL_TEXTURE_CUBE_MAP_NEGATIVE_X},
+
+		{pathToCubeMap + "posx.png", GL_TEXTURE_CUBE_MAP_POSITIVE_Z},
+		{pathToCubeMap + "negx.png", GL_TEXTURE_CUBE_MAP_NEGATIVE_Z},
+
+		{pathToCubeMap + "posy.png", GL_TEXTURE_CUBE_MAP_POSITIVE_Y},
+		{pathToCubeMap + "negy.png", GL_TEXTURE_CUBE_MAP_NEGATIVE_Y},
 	};
 	//load the six faces
 	for (std::pair<std::string, GLenum> pair : facesToLoad) {
@@ -312,6 +340,118 @@ int main(int argc, char* argv[])
 
 	InputMgr inputmgr;
 
+
+
+
+
+
+
+
+	Shader textShader(textVS, textFS);
+
+	glm::mat4 textProjection =
+		glm::ortho(
+			0.0f,
+			(float)width,
+			(float)height,
+			0.0f
+		);
+
+	GLuint fontTexture;
+
+	stbtt_bakedchar cdata[96];
+
+	unsigned char* ttf_buffer =
+		new unsigned char[1 << 20];
+
+	FILE* fontFile =
+		fopen("cmmi10.ttf", "rb");
+
+	fread(
+		ttf_buffer,
+		1,
+		1 << 20,
+		fontFile
+	);
+
+	fclose(fontFile);
+
+	unsigned char* bitmap =
+		new unsigned char[512 * 512];
+
+	stbtt_BakeFontBitmap(
+		ttf_buffer,
+		0,
+		32.0,
+		bitmap,
+		512,
+		512,
+		32,
+		96,
+		cdata
+	);
+
+	glGenTextures(1, &fontTexture);
+
+	glBindTexture(
+		GL_TEXTURE_2D,
+		fontTexture
+	);
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		GL_RED,
+		512,
+		512,
+		0,
+		GL_RED,
+		GL_UNSIGNED_BYTE,
+		bitmap
+	);
+
+	glTexParameteri(
+		GL_TEXTURE_2D,
+		GL_TEXTURE_MIN_FILTER,
+		GL_LINEAR
+	);
+
+	glTexParameteri(
+		GL_TEXTURE_2D,
+		GL_TEXTURE_MAG_FILTER,
+		GL_LINEAR
+	);
+
+	GLuint textVAO;
+	GLuint textVBO;
+
+	glGenVertexArrays(1, &textVAO);
+	glGenBuffers(1, &textVBO);
+
+	glBindVertexArray(textVAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		sizeof(float) * 6 * 4,
+		NULL,
+		GL_DYNAMIC_DRAW
+	);
+
+	glVertexAttribPointer(
+		0,
+		4,
+		GL_FLOAT,
+		GL_FALSE,
+		4 * sizeof(float),
+		(void*)0
+	);
+
+	glEnableVertexAttribArray(0);
+
 	while (!glfwWindowShouldClose(window))
 	{
 		
@@ -320,7 +460,7 @@ int main(int argc, char* argv[])
 		UserCmd cur_cmd;
 			
 		processInput(window, &cur_cmd, &inputmgr);
-		updateGameLogic(&renderagbleMgr.renderables.at(3), cur_cmd, &inputmgr);
+		renderagbleMgr.updateGameLogic(&renderagbleMgr.renderables.at(3), cur_cmd, &inputmgr);
 		glm::vec3 forward;
 
 		forward.x = cos(glm::radians(camera.Yaw)) * cos(glm::radians(camera.Pitch));
@@ -332,7 +472,7 @@ int main(int argc, char* argv[])
 		{
 			glm::vec3 playerPos =	renderagbleMgr.renderables[3].position;
 
-			// caméra derrière le joueur
+			// camÃ©ra derriÃ¨re le joueur
 			glm::vec3 camPos = playerPos - forward * 1.0f + glm::vec3(0.0f, 1.0f, 0.0f);
 			view = glm::lookAt(camPos,camPos + forward,glm::vec3(0.0f, 2.0f, 0.0f));
 		}
@@ -377,7 +517,9 @@ int main(int argc, char* argv[])
 			glm::vec3(12.0f, 8.0f, 19.0f)
 		);*/
 		
-		printf("%f %f %f \n ", camera.Position[0], camera.Position[1], camera.Position[2]);
+		//printf("%f %f %f \n ", camera.Position[0], camera.Position[1], camera.Position[2]);
+
+		//renderagbleMgr.getGround(camera.Position);
 		for (int i = 0; i < renderagbleMgr.renderables.size(); i++) {
 			if (renderagbleMgr.renderables[i].has_light) {
 				lights.push_back(renderagbleMgr.renderables[i].light);
@@ -388,9 +530,9 @@ int main(int argc, char* argv[])
 		draw_direction_line(	renderagbleMgr.renderables[2].position,	camera.Yaw,	camera.Pitch	);
 		
 
-		
-		renderShadowPass( window, &renderagbleMgr.renderables,shadowMap, depthShader);
-		RenderScene(window, &renderagbleMgr.renderables, shadowMap, view, perspective, program, colorLoc, useTextureLoc ,u_texture, lights);
+		glDisable(GL_CULL_FACE);
+		//shadowMap.renderShadowPass( window, &renderagbleMgr.renderables, depthShader, lights[0], camera.Position);
+		RenderScene(window, &renderagbleMgr.renderables, cubeMapTexture, shadowMap, view, perspective, program, colorLoc, useTextureLoc ,u_texture, lights);
 		
 		
 
@@ -411,8 +553,62 @@ int main(int argc, char* argv[])
 		glBindVertexArray(debugVAO);
 
 		draw_direction_line(		renderagbleMgr.renderables[2].position,	camera.Yaw,	camera.Pitch);
+
+		glDisable(GL_DEPTH_TEST);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		textShader.use();
+		textShader.use();
+
+		glUniform1i(
+			glGetUniformLocation(textShader.ID, "textTexture"),
+			0
+		);
+		textShader.setMatrix4(
+			"projection",
+			textProjection
+		);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+		glDisable(GL_CULL_FACE);
+
+		glActiveTexture(GL_TEXTURE0);
+
+		glBindTexture(GL_TEXTURE_2D, fontTexture);
+
+		glBindVertexArray(textVAO);
+		glUniform3f(
+			glGetUniformLocation(textShader.ID, "textColor"),
+			1.0f,
+			1.0f,
+			1.0f
+		);
+		glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+		/* RRenderTextt(
+			fontTexture,
+			cdata,
+			textVAO,
+			textVBO,
+			std::string("YOU WIN"),
+			200,
+			200
+		);*/
+
+		glEnable(GL_DEPTH_TEST);
+
+		glDisable(GL_BLEND);
+
+		glEnable(GL_CULL_FACE);
+
+		glEnable(GL_DEPTH_TEST);
 		glfwSwapBuffers(window);
 	}
+
+
+	delete[] ttf_buffer;
+	delete[] bitmap;
 }
 
 
