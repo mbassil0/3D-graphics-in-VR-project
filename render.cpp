@@ -2,7 +2,7 @@
 #include "render.h"
 
 
-void RenderScene(GLFWwindow* window, std::vector<Renderable>* renderables, ShadowMap shadowMap, glm::mat4 view, glm::mat4 perspective, GLuint program, GLint colorLoc, GLint useTextureLoc, GLint u_texture, std::vector<glm::vec3> light_pos)
+void RenderScene(GLFWwindow* window, std::vector<Renderable>* renderables, GLuint cubeMapTexture, ShadowMap shadowMap, glm::mat4 view, glm::mat4 perspective, GLuint program, GLint colorLoc, GLint useTextureLoc, GLint u_texture, std::vector<glm::vec3> light_pos)
 {
 	int display_w, display_h;
 
@@ -10,7 +10,8 @@ void RenderScene(GLFWwindow* window, std::vector<Renderable>* renderables, Shado
 		window,
 		&display_w,
 		&display_h
-	);
+	); glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	glViewport(
 		0,
@@ -23,6 +24,8 @@ void RenderScene(GLFWwindow* window, std::vector<Renderable>* renderables, Shado
 		i < renderables->size();
 		i++)
 	{
+	
+		printf("refl %d  %f \n", i, renderables->at(i).reflectivity);
 		glBindVertexArray(
 			renderables->at(i)
 			.VAO
@@ -68,6 +71,21 @@ void RenderScene(GLFWwindow* window, std::vector<Renderable>* renderables, Shado
 			)
 		);
 
+		glUniform1f(
+			glGetUniformLocation(program, "fogDensity"),
+			0.02f
+		);
+
+		glUniform3f(
+			glGetUniformLocation(program, "fogColor"),
+			0.6f,
+			0.7f,
+			0.8f
+		);
+		glUniform1f(
+			glGetUniformLocation(program, "u_time"),
+			glfwGetTime()
+		);
 		// =========================
 		// SHADOW UNIFORMS
 		// =========================
@@ -98,6 +116,9 @@ void RenderScene(GLFWwindow* window, std::vector<Renderable>* renderables, Shado
 			),
 			2
 		);
+
+
+
 
 		// =========================
 		// MATRICES
@@ -158,7 +179,32 @@ void RenderScene(GLFWwindow* window, std::vector<Renderable>* renderables, Shado
 			GL_FALSE,
 			glm::value_ptr(perspective)
 		);
+		
 
+		//
+		// reflection
+		// 
+		glActiveTexture(GL_TEXTURE3);
+
+		glBindTexture(
+			GL_TEXTURE_CUBE_MAP,
+			cubeMapTexture
+		);
+
+		glUniform1i(
+			glGetUniformLocation(
+				program,
+				"skybox"
+			),
+			3
+		);
+		glUniform1f(
+			glGetUniformLocation(
+				program,
+				"reflectivity"
+			),
+			renderables->at(i).reflectivity
+		);
 		// =========================
 		// TEXTURES
 		// =========================
@@ -216,6 +262,7 @@ void RenderScene(GLFWwindow* window, std::vector<Renderable>* renderables, Shado
 					0
 				);
 			}
+
 
 			glDrawArrays(
 				GL_TRIANGLES,
