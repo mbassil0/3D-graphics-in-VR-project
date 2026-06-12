@@ -17,6 +17,28 @@
 
 extern Camera camera;
 
+struct UserCmd
+{
+	bool left = 0;
+	bool right = 0;
+	bool forward = 0;
+	bool backward = 0;
+
+	bool jump = 0;
+	bool shoot = 0;
+
+	float yaw;
+	float pitch;
+};
+
+struct InputMgr
+{
+	bool thirdPersonView = false;
+	bool tabPressedLastFrame = false;
+
+
+};
+
 
 struct Vertexx {
 	float px, py, pz;
@@ -63,13 +85,25 @@ struct Renderable {
 	glm::vec3 rotation;
 	glm::vec3 scale;
 	
-
+	float reflectivity = 0.00f;
 	glm::vec3 min;
 	glm::vec3 max;
 	bool destroyed = false; //for car
 	bool has_light = false;
-	glm::vec3 light; //possible light position on the obje
+	glm::vec3 light; //possible light position on the objet
 };
+
+
+struct Shape
+{
+	glm::vec3 min;
+	glm::vec3 max;
+	Renderable* renderable; //parent obj file containing shape object.
+
+	int renderableIndex=-1;
+};
+
+
 
 class RenderableMgr {
 public:
@@ -80,35 +114,27 @@ public:
 	bool  load_obj2(const std::string& path, Renderable* out);
 
 	void render();
+	
+
+
+	void performGravity(Renderable* renderable); //todo separate on another class and the 2 other functions too
+	float getGroundDistance(glm::vec3 pos, Shape*& shapeBelow);
+	void updateGameLogic(Renderable* renderable, UserCmd cmd, InputMgr* out);
+
+
+	bool isInsideShape(glm::vec3 pos);
 
 	std::vector <Renderable> renderables;
 	std::unordered_map<std::string, GLuint> textures;
 	
 	std::vector<glm::vec3> lights;
-
+	
+	std::vector <Shape>sceneShapes;
 };
 
-struct UserCmd
-{
-	bool left=0;
-	bool right=0;
-	bool forward=0;
-	bool backward=0;
-
-	bool jump=0;
-	bool shoot=0;
-
-	float yaw;
-	float pitch;
-};
-
-struct InputMgr
-{
-	bool thirdPersonView = false;
-	bool tabPressedLastFrame = false;
 
 
-};
+
 
 /*  
 struct Renderable {
@@ -147,5 +173,9 @@ GLFWwindow* Init();
 //void APIENTRY glDebugOutput(GLenum source,GLenum type,unsigned int id,GLenum severity,GLsizei length,const char* message,	const void* userParam);
 void loadCubemapFace(const char* path, const GLenum& targetFace);
 
+void draw_direction_line(glm::vec3 position, float yaw, float pitch);
+//void updateGameLogic(Renderable* renderable, UserCmd cmd, InputMgr* out);
 
-void updateGameLogic(Renderable* renderable, UserCmd cmd, InputMgr* out);
+
+extern GLuint debugVAO;
+extern GLuint debugVBO;
