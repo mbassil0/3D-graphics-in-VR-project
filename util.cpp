@@ -4,88 +4,7 @@
 
 
 
-Camera camera(glm::vec3(0.0, 3.0, 8.0));
 
-void processInput(GLFWwindow* window, UserCmd *cmd, InputMgr* input_mgr) {
-	// Use the cameras class to change the parameters of the camera
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-
-	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-		camera.ProcessKeyboardMovement(LEFT, 0.1);
-	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-		camera.ProcessKeyboardMovement(RIGHT, 0.1);
-
-	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		camera.ProcessKeyboardMovement(FORWARD, 0.1);
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		camera.ProcessKeyboardMovement(BACKWARD, 0.1);
-
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		camera.ProcessKeyboardRotation(1, 0.0, 1);
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		camera.ProcessKeyboardRotation(-1, 0.0, 1);
-
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		camera.ProcessKeyboardRotation(0.0, 1.0, 1);
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		camera.ProcessKeyboardRotation(0.0, -1.0, 1);
-
-
-
-	if (glfwGetKey(window, GLFW_KEY_KP_8) == GLFW_PRESS)
-	{
-		cmd->forward = 1;
-	}
-	if (glfwGetKey(window, GLFW_KEY_KP_2) == GLFW_PRESS)
-	{
-		cmd->backward = 1;
-	}
-	if (glfwGetKey(window, GLFW_KEY_KP_6) == GLFW_PRESS)
-	{
-		cmd->right = 1;
-	}
-	if (glfwGetKey(window, GLFW_KEY_KP_4) == GLFW_PRESS)
-	{
-		cmd->left= 1;
-	}
-
-	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-	{
-		cmd->jump = 1;
-	}
-
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-	{
-		cmd->shoot = 1;
-	}
-
-
-	/*if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
-	{
-		if (input_mgr->thirdPersonView == 1) { input_mgr->thirdPersonView = 0; }
-
-		if (input_mgr->thirdPersonView == 0) { input_mgr->thirdPersonView = 1; }
-
-	}*/
-
-	bool tabNow =
-		glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS;
-
-	if (tabNow && !input_mgr->tabPressedLastFrame)
-	{
-		input_mgr->thirdPersonView =
-			!input_mgr->thirdPersonView;
-
-		printf(" we changing to %d \n", input_mgr->thirdPersonView);
-	}
-
-	input_mgr->tabPressedLastFrame = tabNow;
-
-
-
-
-}
 
 const int width = 900;
 const int height = 900;
@@ -219,9 +138,6 @@ bool load_texture(std::string path, GLuint *texture) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	//4. Load the image
-	//Carefull depending on where your executable is, the relative path might be different from what you think it is
-	//Try to use an absolute path
-	//image usually have thei 0.0 at the top of the vertical axis and not the bottom like opengl expects
 	stbi_set_flip_vertically_on_load(true);
 	int imWidth, imHeight, imNrChannels;
 	unsigned char* data = stbi_load(path.c_str(), &imWidth, &imHeight, &imNrChannels, 0);
@@ -317,7 +233,7 @@ bool  RenderableMgr::load_obj(const std::string& path, Renderable* out) {
 		path.c_str()
 	);
 
-	printf("for %s   got %d  %s  \n", path.c_str(), shapes.size(), shapes.at(0).name.c_str());
+	
 
 	for (int i = 0; i < shapes.size(); i++)
 	{
@@ -371,11 +287,17 @@ bool  RenderableMgr::load_obj(const std::string& path, Renderable* out) {
 		int currentMaterial = -1;
 
 		TextureRange currentRange;
-
+		
 		for (const auto& shape : shapes)
 		{
+			glm::vec3 curMin(999999.0f);;
+			glm::vec3 curMax(-999999.0f);;
+			
+
 			for (size_t f = 0; f < shape.mesh.indices.size(); f += 3)
 			{
+				
+				//handle textures
 				int material_id =
 					shape.mesh.material_ids[f / 3];
 
@@ -389,6 +311,7 @@ bool  RenderableMgr::load_obj(const std::string& path, Renderable* out) {
 							currentRange
 						);
 					}
+
 
 					currentMaterial = material_id;
 					tinyobj::material_t& mat =
@@ -492,10 +415,35 @@ bool  RenderableMgr::load_obj(const std::string& path, Renderable* out) {
 						//printf("u v %f %f \n", v.u, v.v);
 					}
 
+					
+					float x = attrib.vertices[3 * index.vertex_index + 0];
+					float y = attrib.vertices[3 * index.vertex_index + 1];
+					float z = attrib.vertices[3 * index.vertex_index + 2];
+
+					curMin.x = std::min(curMin.x, x);
+					curMin.y = std::min(curMin.y, y);
+					curMin.z = std::min(curMin.z, z);
+
+					curMax.x = std::max(curMax.x, x);
+					curMax.y = std::max(curMax.y, y);
+					curMax.z = std::max(curMax.z, z);
+
 					outVertices.push_back(v);
 
 					currentRange.vertexCount++;
 				}
+			}
+
+			printf("okaok   %d  %s \n", path == "rocket_launcher.obj", path.c_str());
+			if (path != "rocket_launcher.obj") {
+				Shape curShape;
+
+				curShape.min = curMin;
+				curShape.max = curMax;
+				curShape.renderableIndex = renderables.size(); //no need to -1 because we push_back after this line
+
+				sceneShapes.push_back(curShape);
+				printf("for object min %f %f %f   %f  %f  %f \n", curMin.x, curMin.y, curMin.z, curMax.x, curMax.y, curMax.z);
 			}
 		}
 
@@ -556,68 +504,45 @@ bool  RenderableMgr::load_obj(const std::string& path, Renderable* out) {
 
 }
 
-
-
-
-void performGravity(Renderable* renderable)
-{
-	if (renderable->position[1] > 2)
-		renderable->position[1] -= 0.25;
-}
-
-
-void updateGameLogic(Renderable* renderable, UserCmd cmd, InputMgr *out)
-{
+void draw_direction_line(glm::vec3 position, float yaw, float pitch) {
 	/*
-	Input: Renderables where renderable(2) is our player
-		   Cmd the action that was done by the player
-	Purpose:
-		   Updated renderable values according to the player action, so they can be rendered.
+	Draws the line of the
+	For debugging/visualisation purposes
 	*/
 	glm::vec3 forward;
+
 	forward.x =
-		cos(glm::radians(camera.Yaw)) *
-		cos(glm::radians(camera.Pitch));
+		cos(glm::radians(yaw)) *
+		cos(glm::radians(pitch));
 
 	forward.y =
-		0.0f; // keep movement on ground
+		sin(glm::radians(pitch));
 
 	forward.z =
-		sin(glm::radians(camera.Yaw)) *
-		cos(glm::radians(camera.Pitch));
+		sin(glm::radians(yaw)) *
+		cos(glm::radians(pitch));
 
 	forward = glm::normalize(forward);
-	
-	static bool is_jumping = false;
-	static double jumping_time = 0;
-	static float jump_pos = 0;
 
-	if (cmd.jump && is_jumping == false) {
-		renderable->position[1] += 0.35;
-		is_jumping = true;
-		jumping_time = glfwGetTime();
-		cmd.jump = 0;
+	glm::vec3 start =
+		position;
 
-	}
-	if (is_jumping == true && renderable->position[1] > 1.0)
+	glm::vec3 end =
+		start + forward * 5.0f;
+
+	float lineVertices[] =
 	{
-		is_jumping = false;
-		cmd.jump = 0;
-	}
+		start.x, start.y, start.z,
+		end.x, end.y, end.z
+	};
+	glBindBuffer(GL_ARRAY_BUFFER, debugVBO);
 
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		sizeof(lineVertices),
+		lineVertices,
+		GL_DYNAMIC_DRAW
+	);
 
-	if (cmd.forward)
-	{
-		renderable->position += forward * 0.5f;
-	}
-
-	if (cmd.backward)
-	{
-		renderable->position -= forward * 0.5f;
-	}
-
-
-	performGravity(renderable);
+	glDrawArrays(GL_LINES, 0, 2);
 }
-
-
