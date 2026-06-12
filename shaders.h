@@ -81,72 +81,7 @@ const std::string sourceFCubeMap =
 "} \n";
 
 
-const std::string sourceVTex = "#version 330 core\n"
-"in vec3 position; \n"
-//5. Your code
-"in vec2 texcoord; \n"
-"out vec2 v_tex; \n"
 
-"uniform mat4 M; \n"
-"uniform mat4 V; \n"
-"uniform mat4 P; \n"
-" void main(){ \n"
-"gl_Position = P*V*M*vec4(position, 1);\n"
-"v_tex = texcoord; \n"
-
-"}\n";
-const std::string sourceFTex = "#version 330 core\n"
-"out vec4 FragColor;"
-"precision mediump float; \n"
-"in vec2 v_tex; \n"
-//6. Get the texture 
-"uniform sampler2D ourTexture; \n"
-"void main() { \n"
-//8. use the texture and the coordinates
-"FragColor = texture(ourTexture, v_tex); \n"
-"} \n";
-
-
-const std::string sourceVV = "#version 330 core\n"
-"layout (location = 0) in vec3 position; \n"
-"layout (location = 1) in vec3 normal; \n"
-"layout (location = 2) in vec2 texcoord; \n"
-"out vec2 v_tex; \n"
-"uniform mat4 M; \n"
-"uniform mat4 V; \n"
-"uniform mat4 P; \n"
-"void main(){ \n"
-"gl_Position = P*V*M*vec4(position, 1.0);\n"
-"v_tex = texcoord; \n"
-"}\n";
-
-
-const std::string sourceFF = "#version 330 core\n"
-"out vec4 FragColor;\n"
-"precision mediump float; \n"
-
-"in vec2 v_tex; \n"
-
-"uniform sampler2D ourTexture; \n"
-"uniform bool useTexture; \n"
-"uniform vec4 materialColor; \n"
-
-"void main() { \n"
-
-"	if(useTexture) \n"
-"	{ \n"
-"		vec4 tex = texture(ourTexture, v_tex); \n"
-
-"		if(tex.a < 0.01) discard; \n"
-
-"		FragColor = tex; \n"
-"	} \n"
-"	else \n"
-"	{ \n"
-"		FragColor = materialColor; \n"
-"	} \n"
-
-"} \n";
 
 
 const std::string sourceVl = "#version 330 core\n"
@@ -181,165 +116,163 @@ const std::string sourceVl = "#version 330 core\n"
 
 "}\n";
 
-
-const std::string sourceFl = "#version 330 core\n"
-
+const std::string sourceFl =
+"#version 330 core\n"
 "out vec4 FragColor;\n"
-
-"in vec3 v_frag_pos; \n"
-"in vec3 v_normal; \n"
-"in vec2 v_tex; \n"
-"in vec4 fragPosLightSpace; \n"
-
-"uniform sampler2D ourTexture; \n"
-"uniform sampler2D shadowMap; \n"
-
-"uniform bool useTexture; \n"
-
-"uniform vec4 materialColor; \n"
-
-"uniform vec3 lightPositions[10]; \n"
-"uniform vec3 lightColor; \n"
-
-"uniform int numLights; \n"
-
-"uniform vec3 viewPos; \n"
-
-"float ShadowCalculation(vec4 fragPosLightSpace, vec3 N, vec3 L)\n"
+"\n"
+"in vec3 v_frag_pos;\n"
+"in vec3 v_normal;\n"
+"in vec2 v_tex;\n"
+"in vec4 fragPosLightSpace;\n"
+"\n"
+"uniform sampler2D ourTexture;\n"
+"uniform samplerCube skybox;\n"
+"\n"
+"uniform float reflectivity;\n"
+"uniform bool useTexture;\n"
+"uniform vec4 materialColor;\n"
+"\n"
+"uniform vec3 lightPositions[10];\n"
+"uniform vec3 lightColor;\n"
+"uniform int numLights;\n"
+"\n"
+"uniform vec3 viewPos;\n"
+"\n"
+"uniform float fogDensity;\n"
+"uniform vec3 fogColor;\n"
+"\n"
+"void main()\n"
 "{\n"
-
-"    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;\n"
-
-"    projCoords = projCoords * 0.5 + 0.5;\n"
-
-"    if(projCoords.x < 0.0 || projCoords.x > 1.0 ||\n"
-"       projCoords.y < 0.0 || projCoords.y > 1.0)\n"
+"    vec3 N = normalize(v_normal);\n"
+"    vec3 V = normalize(viewPos - v_frag_pos);\n"
+"\n"
+"    vec4 baseColor;\n"
+"\n"
+"    if(useTexture)\n"
 "    {\n"
-"        return 0.0;\n"
+"        baseColor = texture(ourTexture, v_tex);\n"
+"\n"
+"        if(baseColor.a < 0.01)\n"
+"            discard;\n"
 "    }\n"
-
-"    if(projCoords.z > 1.0)\n"
+"    else\n"
 "    {\n"
-"        return 0.0;\n"
+"        baseColor = materialColor;\n"
 "    }\n"
-
-"    float currentDepth = projCoords.z;\n"
-
-"    float bias = max(0.005 * (1.0 - dot(N, L)), 0.002);\n"
-
-"    float shadow = 0.0;\n"
-
-"    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);\n"
-
-"    for(int x = -1; x <= 1; ++x)\n"
-"    {\n"
-
-"        for(int y = -1; y <= 1; ++y)\n"
-"        {\n"
-
-"            float pcfDepth = texture(\n"
-"                shadowMap,\n"
-"                projCoords.xy + vec2(x, y) * texelSize\n"
-"            ).r;\n"
-
-"            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;\n"
-
-"        }\n"
-
-"    }\n"
-
-"    shadow /= 9.0;\n"
-
-"    return shadow;\n"
-
-"}\n"
-
-"void main() { \n"
-
-"    vec3 N = normalize(v_normal); \n"
-
-"    vec3 V = normalize(viewPos - v_frag_pos); \n"
-
+"\n"
 "    vec3 diffuse = vec3(0.0);\n"
 "    vec3 specular = vec3(0.0);\n"
-
-"    vec3 firstLightDir = normalize(lightPositions[0] - v_frag_pos);\n"
-
-"    float intensity = 2.0;\n"
-
+"\n"
 "    for(int i = 0; i < numLights; i++)\n"
 "    {\n"
-
-"        vec3 lightVec = lightPositions[i] - v_frag_pos;\n"
-
-"        float distance = length(lightVec);\n"
-
-"        vec3 L = normalize(lightVec);\n"
-
-"        vec3 R = reflect(-L, N);\n"
-
-"        float attenuation = 1.0 / (\n"
-"            1.0 +\n"
-"            0.09 * distance +\n"
-"            0.032 * distance * distance\n"
-"        );\n"
-
+"        vec3 lightDir = lightPositions[i] - v_frag_pos;\n"
+"        float distance = length(lightDir);\n"
+"        vec3 L = normalize(lightDir);\n"
+"\n"
+"        float attenuation =\n"
+"            1.0 / (1.0 + 0.02 * distance * distance);\n"
+"\n"
 "        float diff = max(dot(N, L), 0.0);\n"
-
-"        diffuse += diff *lightColor * intensity * attenuation*3;  \n"
-
-
-"        float specularStrength = 0.12;\n"
-
-"        float spec = pow(max(dot(V, R), 0.0), 32.0);\n"
-
-"       specular +=specularStrength *spec *lightColor *intensity *attenuation *8.0; \n"
+"\n"
+"        diffuse += diff * lightColor * attenuation;\n"
+"\n"
+"        vec3 H = normalize(L + V);\n"
+"\n"
+"        float spec = pow(max(dot(N, H), 0.0), 64.0);\n"
+"\n"
+"        specular += spec * lightColor * attenuation * 0.5;\n"
 "    }\n"
-"    vec3 skyColor = vec3(0.16, 0.20, 0.28);\n"
-"    vec3 groundColor = vec3(0.05, 0.05, 0.06);\n"
-
-"    float hemiFactor = N.y * 0.5 + 0.5;\n"
-
-"    vec3 ambient = mix(\n"
-"        groundColor,\n"
-"        skyColor,\n"
-"        hemiFactor\n"
+"\n"
+"    vec3 ambient = vec3(0.08);\n"
+"\n"
+"    vec3 litColor =\n"
+"        baseColor.rgb * (ambient + diffuse)\n"
+"        + specular;\n"
+"\n"
+"    vec3 I = normalize(v_frag_pos - viewPos);\n"
+"    vec3 R = reflect(I, N);\n"
+"\n"
+"    vec3 reflectionColor = texture(skybox, R).rgb;\n"
+"\n"
+"    float fresnel = pow(\n"
+"        1.0 - max(dot(N, V), 0.0),\n"
+"        5.0\n"
 "    );\n"
-
-"    vec4 baseColor; \n"
-
-"    if(useTexture) \n"
-"    { \n"
-
-"        baseColor = texture(ourTexture, v_tex); \n"
-
-"        if(baseColor.a < 0.01) discard; \n"
-
-"    } \n"
-"    else \n"
-"    { \n"
-
-"        baseColor = materialColor; \n"
-
-"    } \n"
-
-"    float shadow = ShadowCalculation(\n"
-"        fragPosLightSpace,\n"
-"        N,\n"
-"        firstLightDir\n"
+"\n"
+"    float reflectionAmount =\n"
+"        clamp(reflectivity + fresnel * 0.5, 0.0, 1.0);\n"
+"\n"
+"    reflectionAmount = reflectivity;\n"
+"\n"
+"    vec3 finalColor = mix(\n"
+"        litColor,\n"
+"        reflectionColor,\n"
+"        reflectionAmount\n"
 "    );\n"
+"\n"
+"    // =========================\n"
+"    // BEER-LAMBERT DEPTH FOG\n"
+"    // =========================\n"
+"    // =========================\n"
+"    // EXP2 HEIGHT FOG\n"
+"    // =========================\n"
+"\n"
+"    float zs = length(viewPos - v_frag_pos);\n"
+"\n"
+"    float heightFactor = exp(-0.08 * max(v_frag_pos.y, 0.0));\n"
+"\n"
+"    float density = fogDensity * heightFactor;\n"
+"\n"
+"    float f = exp(-pow(density * zs, 2.0));\n"
+"\n"
+"    vec3 skyFogColor = mix(\n"
+"        fogColor,\n"
+"        vec3(0.65, 0.80, 1.00),\n"
+"        0.5\n"
+"    );\n"
+"\n"
+"    finalColor = mix(\n"
+"        skyFogColor,\n"
+"        finalColor,\n"
+"        f\n"
+"    );\n"
+"\n"
 
-"    vec3 lighting = ambient + diffuse + specular;\n"
-
-"    lighting -= shadow * (diffuse + specular);\n"
-
-"    lighting = clamp(lighting, 0.0, 2.0);\n"
-
-"    FragColor = vec4(baseColor.rgb * lighting, baseColor.a); \n"
-
+"\n"
+"    finalColor = pow(finalColor, vec3(1.0 / 2.2));\n"
+"\n"
+"    FragColor = vec4(finalColor, baseColor.a);\n"
 "}\n";
 
 
+
+const std::string  textVS =
+"#version 330 core\n"
+"\n"
+"layout(location = 0) in vec4 vertex;\n"
+"\n"
+"out vec2 TexCoords;\n"
+"\n"
+"uniform mat4 projection;\n"
+"\n"
+"void main()\n"
+"{\n"
+"    gl_Position = projection * vec4(vertex.xy, 0.0, 1.0);\n"
+"    TexCoords = vertex.zw;\n"
+"}\n";
+const  std::string textFS =
+"#version 330 core\n"
+"\n"
+"in vec2 TexCoords;\n"
+"out vec4 FragColor;\n"
+"\n"
+"uniform sampler2D textTexture;\n"
+"\n"
+"void main()\n"
+"{\n"
+"    float alpha = texture(textTexture, TexCoords).r;\n"
+"    FragColor = vec4(1.0, 1.0, 1.0, alpha);\n"
+"}\n";
 GLuint compileShader(std::string shaderCode, GLenum shaderType)
 {
 	GLuint shader = glCreateShader(shaderType);
